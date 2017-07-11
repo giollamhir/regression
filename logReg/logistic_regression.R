@@ -116,7 +116,7 @@ table(NH11$r_maritl)  # check values at each level. # Zeros and unknowns include
 # also there is a small number in 9 Unknown marital status 
 # so I'll omit those three as they won't have meaningful results
 NH11$r_maritl <- factor(NH11$r_maritl, levels=c("1 Married - spouse in household", "2 Married - spouse not in household","4 Widowed","5 Divorced","6 Separated", "7 Never married","8 Living with partner"))
-summary(NH11$r_maritl)
+summary(NH11$r_maritl) # confirm NA changes
 
 
 workd.out <- glm(everwrk~age_p+r_maritl,
@@ -131,35 +131,30 @@ workd.out.tab
 ##      status.
 
 
-
-# I didn't want to use average age because what if it varies significantly between groups
-# so bringing in dplyr for an average age in each group
-
-library(dplyr)
-prep_age <- NH11  %>% group_by(r_maritl) %>% summarise(m_age_p = mean(age_p))
-
-NH11$m_age_p <- prep_age[match(NH11$r_maritl, prep_age$r_maritl, nomatch = NA_integer_), 2]
-summary(NH11)
-
-str(NH11$m_age_p) #is numeric here
-
 # Create a dataset with predictors set at desired levels
 predDat2 <- with(NH11,
                 expand.grid(r_maritl = c("1 Married - spouse in household", "2 Married - spouse not in household","4 Widowed","5 Divorced","6 Separated","8 Living with partner"),
-                            age_p =  mean(m_age_p)))
-str(NH11$m_age_p)
+                            age_p =  mean(age_p, na.rm = TRUE))) # average out age since only looking for marital status impact
 str(predDat2)
-View(NH11$m_age_p)
 
-# predDat2 <- subset(NH11, select = r_maritl,m_age_p)  %>% group_by(r_maritl)
 
-predDat2 <- subset(NH11, select = c(r_maritl, m_age_p))  %>% group_by(r_maritl)
-colnames(predDat2)[2] <- "age_p" # fix name to run against model 
-predDat2$age_p <- as.num(predDat2$age_p)
-                            # predict hypertension at those levels
+  # predict work by marital status
 cbind(predDat2, predict(workd.out, type = "response",
                        se.fit = TRUE, interval="confidence",
                        newdata = predDat2))
+
+## So in conclusion: 
+## This tells us that 
+#  1 Married - spouse in household has an 87% chance of having worked before
+#  2 Married - spouse not in household has an 86% chance of having worked before 
+#                           4 Widowed  has a 77% chance of having worked before 
+#                          5 Divorced  has a 93% chance of having worked before 
+#                         6 Separated  has an 88% chance of having worked before
+#               8 Living with partner  has a 91% chance of having worked before 
+
+
+## And visualization: 
+plot(allEffects(workd.out))
 
 
 ##   Note that the data is not perfectly clean and ready to be modeled. You
